@@ -17344,6 +17344,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Get all vendor debit notes
   app.get('/api/vendor-debit-notes', isAuthenticated, async (req: any, res) => {
     try {
+      const { dateFrom, dateTo } = req.query;
+      const conditions = [eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)];
+      if (dateFrom) conditions.push(gte(vendorDebitNotes.debitDate, dateFrom as string));
+      if (dateTo) conditions.push(lte(vendorDebitNotes.debitDate, dateTo as string));
+
       const notes = await db.select({
         id: vendorDebitNotes.id,
         noteNumber: vendorDebitNotes.noteNumber,
@@ -17368,9 +17373,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       })
       .from(vendorDebitNotes)
       .leftJoin(vendors, eq(vendorDebitNotes.vendorId, vendors.id))
-      .where(and(eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)))
+      .where(and(...conditions))
       .orderBy(desc(vendorDebitNotes.createdAt));
-      
+
       res.json(notes);
     } catch (error) {
       console.error("Error fetching vendor debit notes:", error);

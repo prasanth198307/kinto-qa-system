@@ -923,15 +923,13 @@ export async function journalForVendorDebitNote(debitNote: any, vendorName: stri
 
   if (grandTotal === 0) return;
 
-  const creditorAccountCode = await getOrCreateCreditorAccount(vendorName);
+  // VDN creation: DR Debit Note Income (cost of claim) | CR Vendor Claims (creates the credit)
+  // AR is NOT touched at creation — it is only reduced when the VDN is applied to an invoice
+  // (journalForVDNAdjustment handles the AR credit when applied)
   const lines: JournalLineInput[] = [
-    { accountCode: creditorAccountCode, debit: grandTotal, credit: 0, memo: `Vendor Debit Note ${debitNote.noteNumber}`, partyType: 'vendor', partyName: vendorName },
-    { accountCode: ACCOUNT_CODES.VENDOR_CLAIMS, debit: 0, credit: claimAmount, memo: `Claim against ${vendorName}` },
+    { accountCode: ACCOUNT_CODES.DEBIT_NOTE_INCOME, debit: grandTotal, credit: 0, memo: `VDN ${debitNote.noteNumber} - ${vendorName}` },
+    { accountCode: ACCOUNT_CODES.VENDOR_CLAIMS, debit: 0, credit: grandTotal, memo: `Claim pending: ${debitNote.noteNumber}` },
   ];
-
-  if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_INPUT, debit: 0, credit: cgst, memo: 'CGST reversal on claim' });
-  if (sgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_INPUT, debit: 0, credit: sgst, memo: 'SGST reversal on claim' });
-  if (igst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_IGST_INPUT, debit: 0, credit: igst, memo: 'IGST reversal on claim' });
 
   await createJournalWithLines(
     debitNote.debitDate || new Date().toISOString().slice(0, 10),

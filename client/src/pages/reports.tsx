@@ -908,11 +908,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     'vendor-report':     canAccessReportTab('report_vendor_report')  && moduleActive('purchase_orders', 'purchase'),
     'monthly-production':canAccessReportTab('report_monthly_production') && moduleActive('production'),
     'daily-production':  canAccessReportTab('report_monthly_production') && moduleActive('production'),
+    'vendor-debit-notes': canAccessReportTab('report_vendor_report'),
   };
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking', 'vendor-report', 'monthly-production', 'daily-production'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking', 'vendor-report', 'monthly-production', 'daily-production', 'vendor-debit-notes'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -997,6 +998,18 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [pmtCustomer, setPmtCustomer] = useState<string>("all");
   const [pmtCustomerPopoverOpen, setPmtCustomerPopoverOpen] = useState(false);
 
+  // VDN report filters
+  const [vdnPeriodType, setVdnPeriodType] = useState<string>("financial_year");
+  const [vdnFY, setVdnFY] = useState(() => new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+  const [vdnQuarter, setVdnQuarter] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [vdnDateFrom, setVdnDateFrom] = useState("");
+  const [vdnDateTo, setVdnDateTo] = useState("");
+
+  const { data: vdnData = [], isLoading: vdnLoading } = useQuery<any[]>({
+    queryKey: ['/api/vendor-debit-notes', { dateFrom: vdnDateFrom, dateTo: vdnDateTo }],
+    enabled: !!(vdnDateFrom && vdnDateTo),
+  });
+
   // Helper function to calculate gatepass date range based on period values
   const calculateGpPeriodDates = (type: string, week: number, month: number, fy: number) => {
     const now = new Date();
@@ -1025,6 +1038,38 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     }
     return null;
   };
+
+  // Effect to recalculate sales dates when FY, quarter, or month changes
+  useEffect(() => {
+    if (salesPeriodType === 'financial_year') {
+      setDateFrom(format(new Date(salesFY, 3, 1), 'yyyy-MM-dd'));
+      setDateTo(format(new Date(salesFY + 1, 2, 31), 'yyyy-MM-dd'));
+    } else if (salesPeriodType === 'quarterly') {
+      const qStartMonth = salesQuarter === 1 ? 3 : salesQuarter === 2 ? 6 : salesQuarter === 3 ? 9 : 0;
+      const qYear = salesQuarter === 4 ? salesFY + 1 : salesFY;
+      setDateFrom(format(new Date(qYear, qStartMonth, 1), 'yyyy-MM-dd'));
+      setDateTo(format(new Date(qYear, qStartMonth + 3, 0), 'yyyy-MM-dd'));
+    } else if (salesPeriodType === 'monthly') {
+      const now = new Date();
+      const monthYear = salesMonth > now.getMonth() + 1 ? now.getFullYear() - 1 : now.getFullYear();
+      setDateFrom(format(new Date(monthYear, salesMonth - 1, 1), 'yyyy-MM-dd'));
+      setDateTo(format(new Date(monthYear, salesMonth, 0), 'yyyy-MM-dd'));
+    }
+  }, [salesFY, salesQuarter, salesMonth, salesPeriodType]);
+
+  // VDN date sync
+  useEffect(() => {
+    const fy = vdnFY;
+    if (vdnPeriodType === 'financial_year') {
+      setVdnDateFrom(format(new Date(fy, 3, 1), 'yyyy-MM-dd'));
+      setVdnDateTo(format(new Date(fy + 1, 2, 31), 'yyyy-MM-dd'));
+    } else if (vdnPeriodType === 'quarterly') {
+      const qStart = vdnQuarter === 1 ? 3 : vdnQuarter === 2 ? 6 : vdnQuarter === 3 ? 9 : 0;
+      const qYear = vdnQuarter === 4 ? fy + 1 : fy;
+      setVdnDateFrom(format(new Date(qYear, qStart, 1), 'yyyy-MM-dd'));
+      setVdnDateTo(format(new Date(qYear, qStart + 3, 0), 'yyyy-MM-dd'));
+    }
+  }, [vdnPeriodType, vdnFY, vdnQuarter]);
 
   // Effect to recalculate gatepass dates when period type or values change
   useEffect(() => {
@@ -1797,6 +1842,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               Vendor Report
             </TabsTrigger>
           )}
+          {tabPermissions['vendor-debit-notes'] && (
+            <TabsTrigger value="vendor-debit-notes" data-testid="tab-vendor-debit-notes">
+              <FileText className="w-4 h-4 mr-2" />
+              Vendor Debit Notes
+            </TabsTrigger>
+          )}
           {tabPermissions['monthly-production'] && (
             <TabsTrigger value="monthly-production" data-testid="tab-monthly-production">
               <Factory className="w-4 h-4 mr-2" />
@@ -2046,7 +2097,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                     </div>
                     <div>
                       <Label>Financial Year</Label>
-                      <Select value={String(salesFY)} onValueChange={(v) => { setSalesFY(Number(v)); setTimeout(() => applyPeriodDates("quarterly"), 0); }}>
+                      <Select value={String(salesFY)} onValueChange={(v) => setSalesFY(Number(v))}>
                         <SelectTrigger data-testid="select-fy-quarter">
                           <SelectValue />
                         </SelectTrigger>
@@ -2063,7 +2114,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                 {salesPeriodType === "financial_year" && (
                   <div>
                     <Label>Financial Year</Label>
-                    <Select value={String(salesFY)} onValueChange={(v) => { setSalesFY(Number(v)); setTimeout(() => applyPeriodDates("financial_year"), 0); }}>
+                    <Select value={String(salesFY)} onValueChange={(v) => setSalesFY(Number(v))}>
                       <SelectTrigger data-testid="select-fy">
                         <SelectValue />
                       </SelectTrigger>
@@ -3382,6 +3433,218 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         </TabsContent>
         <TabsContent value="vendor-report">
           <VendorReport />
+        </TabsContent>
+        <TabsContent value="vendor-debit-notes">
+          {(() => {
+            const totalGrandTotal = vdnData.reduce((s: number, r: any) => s + (r.grandTotal || 0), 0);
+            const totalSettled = vdnData.reduce((s: number, r: any) => s + (r.settledAmount || 0), 0);
+
+            const handleExportVDN = async () => {
+              const XLSX = await import('xlsx');
+              const rows = vdnData.map((r: any) => ({
+                'VDN Number': r.noteNumber,
+                'Date': r.debitDate,
+                'Vendor': r.vendorName || '',
+                'Vendor GST': r.vendorGst || '',
+                'Reason': r.reason || '',
+                'Subtotal (₹)': (r.subtotal || 0) / 100,
+                'CGST (₹)': (r.cgstAmount || 0) / 100,
+                'SGST (₹)': (r.sgstAmount || 0) / 100,
+                'IGST (₹)': (r.igstAmount || 0) / 100,
+                'Grand Total (₹)': (r.grandTotal || 0) / 100,
+                'Settled (₹)': (r.settledAmount || 0) / 100,
+                'Balance (₹)': ((r.grandTotal || 0) - (r.settledAmount || 0)) / 100,
+                'Status': r.status || '',
+              }));
+              const ws = XLSX.utils.json_to_sheet(rows);
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, 'Vendor Debit Notes');
+              XLSX.writeFile(wb, `vendor-debit-notes-${vdnDateFrom || 'all'}-${vdnDateTo || ''}.xlsx`);
+            };
+
+            const handlePrintVDN = () => {
+              const win = window.open('', '_blank');
+              if (!win) return;
+              const rows = vdnData.map((r: any) => `
+                <tr>
+                  <td>${r.noteNumber}</td>
+                  <td>${r.debitDate || ''}</td>
+                  <td>${r.vendorName || ''}</td>
+                  <td>${r.reason || ''}</td>
+                  <td style="text-align:right">₹${((r.subtotal || 0) / 100).toFixed(2)}</td>
+                  <td style="text-align:right">₹${(((r.cgstAmount || 0) + (r.sgstAmount || 0) + (r.igstAmount || 0)) / 100).toFixed(2)}</td>
+                  <td style="text-align:right">₹${((r.grandTotal || 0) / 100).toFixed(2)}</td>
+                  <td style="text-align:right">₹${((r.settledAmount || 0) / 100).toFixed(2)}</td>
+                  <td style="text-align:right">₹${(((r.grandTotal || 0) - (r.settledAmount || 0)) / 100).toFixed(2)}</td>
+                  <td>${r.status || ''}</td>
+                </tr>`).join('');
+              win.document.write(`<html><head><title>Vendor Debit Notes</title><style>body{font-family:Arial;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 8px}th{background:#f0f0f0}</style></head><body>
+                <h2>Vendor Debit Notes Report</h2>
+                <p>Period: ${vdnDateFrom || ''} to ${vdnDateTo || ''}</p>
+                <table><thead><tr><th>VDN#</th><th>Date</th><th>Vendor</th><th>Reason</th><th>Subtotal</th><th>GST</th><th>Grand Total</th><th>Settled</th><th>Balance</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+                <p><strong>Total Grand Total: ₹${(totalGrandTotal / 100).toFixed(2)} | Settled: ₹${(totalSettled / 100).toFixed(2)} | Balance: ₹${((totalGrandTotal - totalSettled) / 100).toFixed(2)}</strong></p>
+              </body></html>`);
+              win.document.close();
+              win.print();
+            };
+
+            return (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <div>
+                    <CardTitle>Vendor Debit Notes</CardTitle>
+                    <CardDescription>
+                      {vdnData.length} note{vdnData.length !== 1 ? 's' : ''} found
+                      {vdnData.length > 0 && (
+                        <span className="ml-2">
+                          | Total: {formatCurrency(totalGrandTotal)} | Settled: {formatCurrency(totalSettled)} | Balance: {formatCurrency(totalGrandTotal - totalSettled)}
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleExportVDN} disabled={vdnData.length === 0}>
+                      <Download className="w-4 h-4 mr-2" />Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handlePrintVDN} disabled={vdnData.length === 0}>
+                      <FileText className="w-4 h-4 mr-2" />Print
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <div className="px-6 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label>Period Type</Label>
+                      <Select value={vdnPeriodType} onValueChange={setVdnPeriodType}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">Custom Date Range</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="financial_year">Financial Year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {vdnPeriodType === 'financial_year' && (
+                      <div>
+                        <Label>Financial Year</Label>
+                        <Select value={String(vdnFY)} onValueChange={(v) => setVdnFY(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {fyOptions.map(fy => (
+                              <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {vdnPeriodType === 'quarterly' && (
+                      <>
+                        <div>
+                          <Label>Financial Year</Label>
+                          <Select value={String(vdnFY)} onValueChange={(v) => setVdnFY(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {fyOptions.map(fy => (
+                                <SelectItem key={fy} value={String(fy)}>FY {fy}-{(fy + 1).toString().slice(-2)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Quarter</Label>
+                          <Select value={String(vdnQuarter)} onValueChange={(v) => setVdnQuarter(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Q1 (Apr–Jun)</SelectItem>
+                              <SelectItem value="2">Q2 (Jul–Sep)</SelectItem>
+                              <SelectItem value="3">Q3 (Oct–Dec)</SelectItem>
+                              <SelectItem value="4">Q4 (Jan–Mar)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+
+                    {vdnPeriodType === 'custom' && (
+                      <>
+                        <div>
+                          <Label>From Date</Label>
+                          <Input type="date" value={vdnDateFrom} onChange={(e) => setVdnDateFrom(e.target.value)} />
+                        </div>
+                        <div>
+                          <Label>To Date</Label>
+                          <Input type="date" value={vdnDateTo} onChange={(e) => setVdnDateTo(e.target.value)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <CardContent>
+                  {vdnLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                  ) : vdnData.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No vendor debit notes found for selected period.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">VDN #</th>
+                            <th className="text-left p-2">Date</th>
+                            <th className="text-left p-2">Vendor</th>
+                            <th className="text-left p-2">Reason</th>
+                            <th className="text-right p-2">Subtotal</th>
+                            <th className="text-right p-2">GST</th>
+                            <th className="text-right p-2">Grand Total</th>
+                            <th className="text-right p-2">Settled</th>
+                            <th className="text-right p-2">Balance</th>
+                            <th className="text-center p-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vdnData.map((r: any) => {
+                            const gst = (r.cgstAmount || 0) + (r.sgstAmount || 0) + (r.igstAmount || 0);
+                            const balance = (r.grandTotal || 0) - (r.settledAmount || 0);
+                            return (
+                              <tr key={r.id} className="border-b hover:bg-muted/30">
+                                <td className="p-2 font-mono text-xs">{r.noteNumber}</td>
+                                <td className="p-2">{r.debitDate || ''}</td>
+                                <td className="p-2">{r.vendorName || ''}</td>
+                                <td className="p-2 max-w-[200px] truncate" title={r.reason}>{r.reason || ''}</td>
+                                <td className="p-2 text-right">{formatCurrency(r.subtotal || 0)}</td>
+                                <td className="p-2 text-right">{formatCurrency(gst)}</td>
+                                <td className="p-2 text-right font-medium">{formatCurrency(r.grandTotal || 0)}</td>
+                                <td className="p-2 text-right text-green-600">{formatCurrency(r.settledAmount || 0)}</td>
+                                <td className="p-2 text-right text-orange-600">{formatCurrency(balance)}</td>
+                                <td className="p-2 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.status === 'settled' ? 'bg-green-100 text-green-700' : r.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
+                                    {r.status || 'pending'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 font-semibold bg-muted/30">
+                            <td colSpan={6} className="p-2 text-right">Totals:</td>
+                            <td className="p-2 text-right">{formatCurrency(totalGrandTotal)}</td>
+                            <td className="p-2 text-right text-green-600">{formatCurrency(totalSettled)}</td>
+                            <td className="p-2 text-right text-orange-600">{formatCurrency(totalGrandTotal - totalSettled)}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
         <TabsContent value="monthly-production">
           <MonthlyProductionReportContent />

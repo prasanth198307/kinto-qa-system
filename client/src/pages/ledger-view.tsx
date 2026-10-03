@@ -160,6 +160,15 @@ export default function LedgerViewPage() {
     setSelectedAccountIds(prev => prev.filter(x => x !== id));
   }
 
+  function selectAllInGroup(groupAccounts: typeof accountsList) {
+    const ids = groupAccounts.map(a => a.id);
+    setSelectedAccountIds(prev => {
+      const allSelected = ids.every(id => prev.includes(id));
+      if (allSelected) return prev.filter(id => !ids.includes(id));
+      return [...new Set([...prev, ...ids])];
+    });
+  }
+
   // Combined totals across all accounts
   const combinedDebit  = ledgerResults.reduce((s, d) => s + (Number(d.periodDebit)  || 0), 0);
   const combinedCredit = ledgerResults.reduce((s, d) => s + (Number(d.periodCredit) || 0), 0);
@@ -327,7 +336,16 @@ export default function LedgerViewPage() {
                 )}
                 {filteredGroups.map(group => (
                   <div key={group.label}>
-                    <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/40 sticky top-0">{group.label}</div>
+                    <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/40 sticky top-0 flex items-center justify-between">
+                      <span>{group.label}</span>
+                      <button
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); selectAllInGroup(group.accounts); }}
+                        className="text-primary hover:underline font-normal ml-2 shrink-0"
+                      >
+                        {group.accounts.every(a => selectedAccountIds.includes(a.id)) ? 'Deselect all' : 'Select all'}
+                      </button>
+                    </div>
                     {group.accounts.map(account => {
                       const isSelected = selectedAccountIds.includes(account.id);
                       return (
