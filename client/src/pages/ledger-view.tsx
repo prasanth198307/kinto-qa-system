@@ -234,7 +234,7 @@ export default function LedgerViewPage() {
   }, [accountsList, accountSearch]);
 
   return (
-    <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-ledger-view">
+    <div className="p-4 space-y-4" data-testid="page-ledger-view">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
