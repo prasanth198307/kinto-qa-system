@@ -20,9 +20,9 @@ export function usePermissions() {
   const { data, isLoading, error } = useQuery<UserPermissions | null>({
     queryKey: ['/api/my-permissions'],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   const hasPermission = (screenKey: string, action: 'view' | 'create' | 'edit' | 'delete' = 'view'): boolean => {

@@ -397,7 +397,8 @@ export default function RoleManagement() {
   const handleSavePermissions = () => {
     if (!permissionsRole) return;
 
-    const permissionsArray = activeScreens.reduce<{ screenKey: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]>((acc, screen) => {
+    // Save ALL screens (not just activeScreens) so permissions for module-gated screens are preserved
+    const permissionsArray = AVAILABLE_SCREENS.reduce<{ screenKey: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]>((acc, screen) => {
       const perm = permissions.get(screen.key) || {
         screenKey: screen.key,
         canView: 0,

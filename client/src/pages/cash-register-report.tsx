@@ -648,7 +648,34 @@ export default function CashRegisterReport() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Row 1: From Date / To Date — always visible */}
           <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-2">
+              <Label>From Date</Label>
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => {
+                  setCustomStartDate(e.target.value);
+                  setPeriodType('custom');
+                }}
+                className="w-[160px]"
+                data-testid="input-start-date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>To Date</Label>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => {
+                  setCustomEndDate(e.target.value);
+                  setPeriodType('custom');
+                }}
+                className="w-[160px]"
+                data-testid="input-end-date"
+              />
+            </div>
             <div className="space-y-2">
               <Label>View</Label>
               <Select value={periodType} onValueChange={setPeriodType}>
@@ -656,9 +683,9 @@ export default function CashRegisterReport() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="custom">Date Range</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>
-                  <SelectItem value="custom">Custom Dates</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -715,91 +742,41 @@ export default function CashRegisterReport() {
                 </Select>
               </div>
             )}
-
-            {periodType === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-[160px]"
-                    data-testid="input-start-date"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-[160px]"
-                    data-testid="input-end-date"
-                  />
-                </div>
-              </>
-            )}
           </div>
 
-          {periodType === 'monthly' && (
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  const today = new Date();
-                  setSelectedMonth(format(today, 'MM'));
-                  setSelectedYear(format(today, 'yyyy'));
-                }} 
-                data-testid="button-this-month"
-              >
-                This Month
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  const lastMonth = subMonths(new Date(), 1);
-                  setSelectedMonth(format(lastMonth, 'MM'));
-                  setSelectedYear(format(lastMonth, 'yyyy'));
-                }} 
-                data-testid="button-last-month"
-              >
-                Last Month
-              </Button>
-            </div>
-          )}
-
-          {periodType === 'yearly' && (
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setSelectedYear(format(new Date(), 'yyyy'))} 
-                data-testid="button-this-year"
-              >
-                This Year
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setSelectedYear(format(subYears(new Date(), 1), 'yyyy'))} 
-                data-testid="button-last-year"
-              >
-                Last Year
-              </Button>
-            </div>
-          )}
-
-          {periodType === 'custom' && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => setQuickRange('today')} data-testid="button-today">Today</Button>
-              <Button variant="outline" size="sm" onClick={() => setQuickRange('this_week')} data-testid="button-this-week">This Week</Button>
-              <Button variant="outline" size="sm" onClick={() => setQuickRange('last_30')} data-testid="button-last-30">Last 30 Days</Button>
-              <Button variant="outline" size="sm" onClick={() => setQuickRange('all')} data-testid="button-all-time">All Time</Button>
-            </div>
-          )}
+          {/* Row 2: Quick range buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setPeriodType('custom'); setQuickRange('today'); }} data-testid="button-today">Today</Button>
+            <Button variant="outline" size="sm" onClick={() => { setPeriodType('custom'); setQuickRange('this_week'); }} data-testid="button-this-week">This Week</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPeriodType('monthly');
+                const today = new Date();
+                setSelectedMonth(format(today, 'MM'));
+                setSelectedYear(format(today, 'yyyy'));
+              }}
+              data-testid="button-this-month"
+            >
+              This Month
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPeriodType('monthly');
+                const lastMonth = subMonths(new Date(), 1);
+                setSelectedMonth(format(lastMonth, 'MM'));
+                setSelectedYear(format(lastMonth, 'yyyy'));
+              }}
+              data-testid="button-last-month"
+            >
+              Last Month
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setPeriodType('custom'); setQuickRange('last_30'); }} data-testid="button-last-30">Last 30 Days</Button>
+            <Button variant="outline" size="sm" onClick={() => { setPeriodType('custom'); setQuickRange('all'); }} data-testid="button-all-time">All Time</Button>
+          </div>
         </CardContent>
       </Card>
 
