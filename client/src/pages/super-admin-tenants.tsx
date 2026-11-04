@@ -125,7 +125,7 @@ export default function SuperAdminTenants() {
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "",
+    name: "", slug: "", plan: "none", adminUsername: "", adminPassword: "",
     adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "",
   });
 
@@ -176,7 +176,7 @@ export default function SuperAdminTenants() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       toast({ title: "Tenant created", description: data.message });
       setShowCreateTenant(false);
-      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "" });
+      setCreateForm({ name: "", slug: "", plan: "none", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "" });
     },
     onError: (err: any) => toast({ title: "Creation failed", description: err.message, variant: "destructive" }),
   });
@@ -976,8 +976,9 @@ export default function SuperAdminTenants() {
               <div className="space-y-1">
                 <Label>Plan</Label>
                 <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v, trialDays: v === "trial" ? (f.trialDays || "14") : "" }))}>
-                  <SelectTrigger data-testid="select-create-plan"><SelectValue /></SelectTrigger>
+                  <SelectTrigger data-testid="select-create-plan"><SelectValue placeholder="None (no subscription)" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None (no subscription)</SelectItem>
                     {allPlans.map((p) => (
                       <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>
                     ))}
