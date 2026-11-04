@@ -1534,6 +1534,14 @@ app.use((req, res, next) => {
 
     let totalInserted = 0;
     for (const row of adminRoles.rows) {
+      // Skip tenants whose admin role has intentionally restricted screens (screen-picker tenants)
+      const restrictedCheck = await patchPool.query(`
+        SELECT 1 FROM role_permissions
+        WHERE role_id = $1 AND can_view = 0
+        LIMIT 1
+      `, [row.role_id]);
+      if (restrictedCheck.rowCount && restrictedCheck.rowCount > 0) continue;
+
       for (const key of ALL_SCREEN_KEYS) {
         const res = await patchPool.query(`
           INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
