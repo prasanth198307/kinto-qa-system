@@ -1781,12 +1781,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: `Username "${adminUsername}" is already taken. Please choose a different admin username.` });
       }
 
-      const VALID_PLAN_SLUGS = ['restaurant', 'hotel', 'healthcare', 'pharmacy', 'retail', 'trial', 'enterprise', 'crm', 'agriculture', 'education', 'logistics', 'ngo', 'real_estate'];
-      const planSlug = plan && VALID_PLAN_SLUGS.includes(plan) ? plan : 'trial';
-      if (plan && !VALID_PLAN_SLUGS.includes(plan)) {
+      // Look up plan directly from DB — no hardcoded allowlist needed
+      const [planRow] = plan
+        ? await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, plan))
+        : [];
+      const planSlug = planRow ? plan : 'trial';
+      if (plan && !planRow) {
         console.warn(`[TENANT SETUP] Unknown plan slug "${plan}", defaulting to trial`);
       }
-      const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, planSlug));
+      const [resolvedPlanRow] = planRow ? [planRow] : await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, 'trial'));
       const trialEnd = trialDays ? new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toISOString() : null;
 
       // Hash password before transaction (async work outside tx is safer)
@@ -1823,7 +1826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           slug,
           plan: planSlug,
           status: planSlug === 'trial' ? 'trial' : 'active',
-          maxUsers: maxUsers ?? planRow?.maxUsers ?? 5,
+          maxUsers: maxUsers ?? resolvedPlanRow?.maxUsers ?? 5,
           billingEmail: adminEmail ?? null,
           trialEndsAt: trialEnd,
           createdAt: new Date().toISOString(),
@@ -1835,7 +1838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create subscription
         const [newSub] = await tx.insert(subscriptions).values({
           tenantId: newTenant.id,
-          planId: planRow?.id ?? null,
+          planId: resolvedPlanRow?.id ?? null,
           planSlug,
           billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
           status: planSlug === 'trial' ? 'trial' : 'active',
