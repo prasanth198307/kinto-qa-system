@@ -1766,7 +1766,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry, country_code } = req.body;
+    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry, country_code, screens } = req.body;
+    // screens: Record<screenKey, string[]> — optional, sets role_permissions for admin role
     if (!name || !slug || !adminUsername || !adminPassword) {
       return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
     }
@@ -1901,6 +1902,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: `Tenant created manually by super-admin ${currentUser.username}`,
             createdBy: currentUser.username,
           });
+        }
+
+        // Apply screen permissions for admin role if provided
+        if (screens && typeof screens === 'object' && adminRoleId) {
+          const entries = Object.entries(screens as Record<string, string[]>);
+          for (const [screenKey, actions] of entries) {
+            await tx.execute(sql`
+              INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+              VALUES (
+                ${adminRoleId},
+                ${screenKey},
+                ${(actions as string[]).includes('view') ? 1 : 0},
+                ${(actions as string[]).includes('create') ? 1 : 0},
+                ${(actions as string[]).includes('edit') ? 1 : 0},
+                ${(actions as string[]).includes('delete') ? 1 : 0},
+                ${newTenant.id}
+              )
+              ON CONFLICT (role_id, screen_key) DO UPDATE
+              SET can_view = EXCLUDED.can_view, can_create = EXCLUDED.can_create,
+                  can_edit = EXCLUDED.can_edit, can_delete = EXCLUDED.can_delete
+            `);
+          }
         }
 
         return { newTenant, newSub, adminRoleId, adminUserId: newUser?.id };

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,8 @@ import { format } from "date-fns";
 import SuperAdminLayout from "./super-admin-layout";
 import { ModuleMarketplaceDialog } from "@/components/module-marketplace-dialog";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SCREEN_REGISTRY } from "@shared/screen-registry";
 
 type Tenant = {
   id: number;
@@ -128,6 +130,52 @@ export default function SuperAdminTenants() {
     name: "", slug: "", plan: "none", adminUsername: "", adminPassword: "",
     adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "",
   });
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  // screenKey → set of allowed actions
+  const [selectedScreens, setSelectedScreens] = useState<Record<string, Set<string>>>({});
+
+  const screensByModule = useMemo(() => {
+    const groups: Record<string, typeof SCREEN_REGISTRY> = {};
+    for (const s of SCREEN_REGISTRY) {
+      const mod = s.module ?? "core";
+      if (!groups[mod]) groups[mod] = [];
+      groups[mod].push(s);
+    }
+    return groups;
+  }, []);
+
+  function toggleAction(screenKey: string, action: string) {
+    setSelectedScreens(prev => {
+      const cur = new Set(prev[screenKey] ?? []);
+      if (cur.has(action)) cur.delete(action); else cur.add(action);
+      const next = { ...prev };
+      if (cur.size === 0) delete next[screenKey]; else next[screenKey] = cur;
+      return next;
+    });
+  }
+
+  function toggleAllInModule(mod: string, enable: boolean) {
+    setSelectedScreens(prev => {
+      const next = { ...prev };
+      for (const s of screensByModule[mod] ?? []) {
+        if (enable) next[s.key] = new Set(s.allowedActions);
+        else delete next[s.key];
+      }
+      return next;
+    });
+  }
+
+  function selectAllScreens() {
+    const all: Record<string, Set<string>> = {};
+    for (const s of SCREEN_REGISTRY) all[s.key] = new Set(s.allowedActions);
+    setSelectedScreens(all);
+  }
+
+  function resetCreate() {
+    setCreateStep(1);
+    setSelectedScreens({});
+    setCreateForm({ name: "", slug: "", plan: "none", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "" });
+  }
 
   const SEEDED_COUNTRIES = [
     { code: "IN", name: "India", currency: "INR", symbol: sym, tz: "Asia/Kolkata" },
@@ -164,7 +212,7 @@ export default function SuperAdminTenants() {
   });
 
   const createTenantMutation = useMutation({
-    mutationFn: async (payload: typeof createForm) => {
+    mutationFn: async (payload: typeof createForm & { screens?: Record<string, string[]> }) => {
       const res = await apiRequest("POST", "/api/admin/tenants", payload);
       if (!res.ok) {
         const data = await res.json();
@@ -176,7 +224,7 @@ export default function SuperAdminTenants() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       toast({ title: "Tenant created", description: data.message });
       setShowCreateTenant(false);
-      setCreateForm({ name: "", slug: "", plan: "none", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "" });
+      resetCreate();
     },
     onError: (err: any) => toast({ title: "Creation failed", description: err.message, variant: "destructive" }),
   });
@@ -913,143 +961,170 @@ export default function SuperAdminTenants() {
         />
       )}
 
-      {/* ── Create Tenant Dialog ── */}
-      <Dialog open={showCreateTenant} onOpenChange={setShowCreateTenant}>
-        <DialogContent className="max-w-md">
+      {/* ── Create Tenant Dialog (2-step wizard) ── */}
+      <Dialog open={showCreateTenant} onOpenChange={(o) => { if (!o) { setShowCreateTenant(false); resetCreate(); } else setShowCreateTenant(true); }}>
+        <DialogContent className={createStep === 2 ? "max-w-2xl" : "max-w-md"}>
           <DialogHeader>
-            <DialogTitle>Create New Tenant</DialogTitle>
-            <DialogDescription>Manually provision a new company account.</DialogDescription>
+            <DialogTitle>Create New Tenant — Step {createStep} of 2</DialogTitle>
+            <DialogDescription>
+              {createStep === 1 ? "Fill in company and admin details." : "Choose which screens this tenant's admin role can access."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Company Name *</Label>
-                <Input
-                  placeholder="Acme Pvt Ltd"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  data-testid="input-create-name"
-                />
+
+          {/* ── Step 1: Details ── */}
+          {createStep === 1 && (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Company Name *</Label>
+                  <Input placeholder="Acme Pvt Ltd" value={createForm.name}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} data-testid="input-create-name" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Slug (URL key) *</Label>
+                  <Input placeholder="acme-pvt-ltd" value={createForm.slug}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") }))} data-testid="input-create-slug" />
+                </div>
               </div>
               <div className="space-y-1">
-                <Label>Slug (URL key) *</Label>
-                <Input
-                  placeholder="acme-pvt-ltd"
-                  value={createForm.slug}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") }))}
-                  data-testid="input-create-slug"
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Industry</Label>
-              <Select value={createForm.industry} onValueChange={(v) => setCreateForm((f) => ({ ...f, industry: v }))}>
-                <SelectTrigger data-testid="select-create-industry">
-                  <SelectValue placeholder="Select industry (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUSTRIES.map((ind) => (
-                    <SelectItem key={ind} value={ind}>{ind}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Country</Label>
-              <Select value={createForm.country_code} onValueChange={(v) => setCreateForm((f) => ({ ...f, country_code: v }))}>
-                <SelectTrigger data-testid="select-create-country">
-                  <SelectValue placeholder="Select country (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEEDED_COUNTRIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.name} ({c.currency})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedCountry && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Currency: {selectedCountry.symbol} {selectedCountry.currency} &nbsp;·&nbsp; Timezone: {selectedCountry.tz}
-                </p>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Plan</Label>
-                <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v, trialDays: v === "trial" ? (f.trialDays || "14") : "" }))}>
-                  <SelectTrigger data-testid="select-create-plan"><SelectValue placeholder="None (no subscription)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (no subscription)</SelectItem>
-                    {allPlans.map((p) => (
-                      <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label>Industry</Label>
+                <Select value={createForm.industry} onValueChange={(v) => setCreateForm((f) => ({ ...f, industry: v }))}>
+                  <SelectTrigger data-testid="select-create-industry"><SelectValue placeholder="Select industry (optional)" /></SelectTrigger>
+                  <SelectContent>{INDUSTRIES.map((ind) => <SelectItem key={ind} value={ind}>{ind}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Max Users</Label>
-                <Input
-                  type="number"
-                  placeholder="5"
-                  value={createForm.maxUsers}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, maxUsers: e.target.value }))}
-                  data-testid="input-create-maxusers"
-                />
+                <Label>Country</Label>
+                <Select value={createForm.country_code} onValueChange={(v) => setCreateForm((f) => ({ ...f, country_code: v }))}>
+                  <SelectTrigger data-testid="select-create-country"><SelectValue placeholder="Select country (optional)" /></SelectTrigger>
+                  <SelectContent>{SEEDED_COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.name} ({c.currency})</SelectItem>)}</SelectContent>
+                </Select>
+                {selectedCountry && <p className="text-xs text-gray-500 mt-1">Currency: {selectedCountry.symbol} {selectedCountry.currency} · Timezone: {selectedCountry.tz}</p>}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Plan</Label>
+                  <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v, trialDays: v === "trial" ? (f.trialDays || "14") : "" }))}>
+                    <SelectTrigger data-testid="select-create-plan"><SelectValue placeholder="None (no subscription)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (no subscription)</SelectItem>
+                      {allPlans.map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Max Users</Label>
+                  <Input type="number" placeholder="5" value={createForm.maxUsers}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, maxUsers: e.target.value }))} data-testid="input-create-maxusers" />
+                </div>
+              </div>
+              {createForm.plan === "trial" && (
+                <div className="space-y-1">
+                  <Label>Trial Days</Label>
+                  <Input type="number" placeholder="14" value={createForm.trialDays}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, trialDays: e.target.value }))} data-testid="input-create-trialdays" />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label>Admin Email</Label>
+                <Input type="email" placeholder="admin@acme.com" value={createForm.adminEmail}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, adminEmail: e.target.value }))} data-testid="input-create-email" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Admin Username *</Label>
+                  <Input placeholder="acme_admin" value={createForm.adminUsername}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, adminUsername: e.target.value }))} data-testid="input-create-username" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Admin Password *</Label>
+                  <Input type="password" placeholder="••••••••" value={createForm.adminPassword}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, adminPassword: e.target.value }))} data-testid="input-create-password" />
+                </div>
               </div>
             </div>
-            {createForm.plan === "trial" && (
-              <div className="space-y-1">
-                <Label>Trial Days</Label>
-                <Input
-                  type="number"
-                  placeholder="14"
-                  value={createForm.trialDays}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, trialDays: e.target.value }))}
-                  data-testid="input-create-trialdays"
-                />
+          )}
+
+          {/* ── Step 2: Screen Picker ── */}
+          {createStep === 2 && (
+            <div className="py-2">
+              <div className="flex gap-2 mb-3">
+                <Button size="sm" variant="outline" onClick={selectAllScreens}>Select All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedScreens({})}>Clear All</Button>
+                <span className="ml-auto text-xs text-muted-foreground self-center">
+                  {Object.keys(selectedScreens).length} screens selected
+                </span>
               </div>
-            )}
-            <div className="space-y-1">
-              <Label>Admin Email</Label>
-              <Input
-                type="email"
-                placeholder="admin@acme.com"
-                value={createForm.adminEmail}
-                onChange={(e) => setCreateForm((f) => ({ ...f, adminEmail: e.target.value }))}
-                data-testid="input-create-email"
-              />
+              <div className="overflow-y-auto max-h-[50vh] space-y-4 pr-1">
+                {Object.entries(screensByModule).map(([mod, screens]) => {
+                  const allSelected = screens.every(s => selectedScreens[s.key]?.size === s.allowedActions.length);
+                  const someSelected = screens.some(s => selectedScreens[s.key]);
+                  return (
+                    <div key={mod} className="border rounded-md p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={(v) => toggleAllInModule(mod, !!v)}
+                          className={!allSelected && someSelected ? "opacity-50" : ""}
+                        />
+                        <span className="font-semibold capitalize text-sm">{mod.replace(/_/g, " ")}</span>
+                        <span className="text-xs text-muted-foreground ml-1">({screens.length} screens)</span>
+                      </div>
+                      <div className="pl-6 space-y-2">
+                        {screens.map(s => (
+                          <div key={s.key} className="space-y-1">
+                            <span className="text-sm font-medium">{s.label}</span>
+                            <div className="flex flex-wrap gap-3 pl-2">
+                              {s.allowedActions.map(action => (
+                                <label key={action} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                                  <Checkbox
+                                    checked={selectedScreens[s.key]?.has(action) ?? false}
+                                    onCheckedChange={() => toggleAction(s.key, action)}
+                                  />
+                                  {action}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Admin Username *</Label>
-                <Input
-                  placeholder="acme_admin"
-                  value={createForm.adminUsername}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, adminUsername: e.target.value }))}
-                  data-testid="input-create-username"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Admin Password *</Label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={createForm.adminPassword}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, adminPassword: e.target.value }))}
-                  data-testid="input-create-password"
-                />
-              </div>
-            </div>
-          </div>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowCreateTenant(false)}>Cancel</Button>
-            <Button
-              onClick={() => createTenantMutation.mutate(createForm)}
-              disabled={createTenantMutation.isPending || !createForm.name || !createForm.slug || !createForm.adminUsername || !createForm.adminPassword}
-              data-testid="button-confirm-create-tenant"
-            >
-              {createTenantMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Create Tenant
-            </Button>
+            {createStep === 1 ? (
+              <>
+                <Button variant="outline" onClick={() => { setShowCreateTenant(false); resetCreate(); }}>Cancel</Button>
+                <Button
+                  onClick={() => setCreateStep(2)}
+                  disabled={!createForm.name || !createForm.slug || !createForm.adminUsername || !createForm.adminPassword}
+                >
+                  Next: Pick Screens →
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setCreateStep(1)}>← Back</Button>
+                <Button
+                  onClick={() => {
+                    const screens: Record<string, string[]> = {};
+                    for (const [key, actions] of Object.entries(selectedScreens)) {
+                      screens[key] = Array.from(actions);
+                    }
+                    createTenantMutation.mutate({ ...createForm, screens });
+                  }}
+                  disabled={createTenantMutation.isPending}
+                  data-testid="button-confirm-create-tenant"
+                >
+                  {createTenantMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  Create Tenant
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
