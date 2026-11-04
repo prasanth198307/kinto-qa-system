@@ -82,6 +82,7 @@ import phase7Router from "./phase7-routes";
 import { taxRouter } from "./tax-routes";
 import { ifrsRouter } from "./ifrs-consolidation-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan, ALL_SCREEN_KEYS } from "./seed-permissions";
+import { ALL_NAV_SCREEN_KEYS } from "../shared/nav-screen-map";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1906,8 +1907,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Apply screen permissions for admin role if provided
         if (screens && typeof screens === 'object' && adminRoleId) {
-          // Pre-seed ALL screens with 0 permissions so seedTenantPermissions skips admin role
-          for (const screenKey of ALL_SCREEN_KEYS) {
+          // Pre-seed ALL screens (from both lists) with 0 permissions so seedTenantPermissions
+          // and the startup REGISTRY AUTO-PATCH both skip admin role rows
+          const allScreenKeySet = new Set([...ALL_SCREEN_KEYS, ...ALL_NAV_SCREEN_KEYS]);
+          for (const screenKey of allScreenKeySet) {
             await tx.execute(sql`
               INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
               VALUES (${adminRoleId}, ${screenKey}, 0, 0, 0, 0, ${newTenant.id})
