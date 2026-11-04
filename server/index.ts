@@ -540,6 +540,7 @@ app.use((req, res, next) => {
 
     // 2. FIX system roles that were incorrectly seeded with all-zero permissions.
     //    admin/manager/accountsmanager always get full CRUD on sales_orders regardless.
+    //    SKIP screen-picker tenants (those with intentional zero-permission rows).
     await poolSO.query(`
       UPDATE role_permissions rp
       SET can_view=1, can_create=1, can_edit=1, can_delete=1, record_status=1
@@ -548,6 +549,10 @@ app.use((req, res, next) => {
         AND rp.screen_key = 'sales_orders'
         AND lower(r.name) IN ('admin','manager','accountsmanager')
         AND (rp.can_view = 0 OR rp.can_create = 0 OR rp.can_edit = 0 OR rp.can_delete = 0)
+        AND NOT EXISTS (
+          SELECT 1 FROM role_permissions rp2
+          WHERE rp2.role_id = r.id AND rp2.can_view = 0 AND rp2.screen_key != 'sales_orders'
+        )
     `);
 
     // 3. FIX operator/reviewer — always get view-only on sales_orders.
@@ -599,7 +604,8 @@ app.use((req, res, next) => {
         WHERE rp2.role_id = r.id AND rp2.screen_key = 'api_keys'
       )
     `);
-    // Also fix any existing admin rows that were inserted with all-zero by a prior migration run
+    // Also fix any existing admin rows that were inserted with all-zero by a prior migration run.
+    // SKIP screen-picker tenants (those with intentional zero-permission rows on other screens).
     await dbApiKeys.execute(sqlApiKeys`
       UPDATE role_permissions rp
       SET can_view=1, can_create=1, can_edit=1, can_delete=1
@@ -608,6 +614,10 @@ app.use((req, res, next) => {
         AND rp.screen_key = 'api_keys'
         AND lower(r.name) IN ('admin','accountsmanager')
         AND rp.can_view = 0
+        AND NOT EXISTS (
+          SELECT 1 FROM role_permissions rp2
+          WHERE rp2.role_id = r.id AND rp2.can_view = 0 AND rp2.screen_key != 'api_keys'
+        )
     `);
     console.log('[API_KEYS MIGRATION] api_keys rows ensured for all roles');
   } catch (err) {
