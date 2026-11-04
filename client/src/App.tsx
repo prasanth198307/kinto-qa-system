@@ -2160,9 +2160,14 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
   if (!sections || !Array.isArray(sections)) return [];
 
   // System roles (admin, manager, accountsmanager) see ALL nav items — no DB filter
+  // UNLESS the tenant was created with restricted screens (some screens have canView=false),
+  // in which case DB permissions apply even for system roles.
   const roleNameLower = roleName?.toLowerCase() || '';
   if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleNameLower)) {
-    return sections;
+    const hasRestrictedScreens = dbPermissions && dbPermissions.length > 0 && dbPermissions.some(p => !p.canView);
+    if (!hasRestrictedScreens) {
+      return sections;
+    }
   }
 
   if (!dbPermissions || dbPermissions.length === 0) return [];
