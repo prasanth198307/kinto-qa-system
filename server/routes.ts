@@ -81,7 +81,7 @@ import { startLoyaltyExpiryScheduler } from "./loyalty-expiry-service";
 import phase7Router from "./phase7-routes";
 import { taxRouter } from "./tax-routes";
 import { ifrsRouter } from "./ifrs-consolidation-routes";
-import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
+import { seedTenantPermissions, syncAndUnlockByPlan, ALL_SCREEN_KEYS } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1906,6 +1906,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Apply screen permissions for admin role if provided
         if (screens && typeof screens === 'object' && adminRoleId) {
+          // Pre-seed ALL screens with 0 permissions so seedTenantPermissions skips admin role
+          for (const screenKey of ALL_SCREEN_KEYS) {
+            await tx.execute(sql`
+              INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+              VALUES (${adminRoleId}, ${screenKey}, 0, 0, 0, 0, ${newTenant.id})
+              ON CONFLICT (role_id, screen_key) DO NOTHING
+            `);
+          }
+          // Then grant only the selected screens with their actual permissions
           const entries = Object.entries(screens as Record<string, string[]>);
           for (const [screenKey, actions] of entries) {
             await tx.execute(sql`
