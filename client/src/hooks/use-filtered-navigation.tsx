@@ -519,9 +519,12 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
       : allNavSections;
 
     // System roles bypass role/permission filtering — only plan gating applies
-    // Check ALL assigned roles: if ANY is a system role, grant full nav access
+    // UNLESS the tenant was created with restricted screens (some screens have canView=false),
+    // in which case DB permissions apply even for system roles.
     const rolesToCheck = allRoles.length > 0 ? allRoles : (roleName ? [roleName] : []);
-    if (rolesToCheck.some(r => SYSTEM_ROLES_FULL_ACCESS.includes(r.toLowerCase()))) {
+    const isSystemRole = rolesToCheck.some(r => SYSTEM_ROLES_FULL_ACCESS.includes(r.toLowerCase()));
+    const hasRestrictedScreens = permissions && permissions.length > 0 && permissions.some(p => !p.canView);
+    if (isSystemRole && !hasRestrictedScreens) {
       const labeled = applyModuleLabelsToNav(planFiltered);
       lastValidRef.current = labeled;
       return labeled;
